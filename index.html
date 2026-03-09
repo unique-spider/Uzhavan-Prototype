@@ -909,78 +909,112 @@ Why:
   </div>
 
   <script>
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('chatInput');
-    const drawerEl = document.getElementById('drawer');
+    // ─── Data ────────────────────────────────────────────────────────────────
 
-    const replies = {
-      'best crop for red soil': `For red soil, strong options include Groundnut, Millets, and Pulses.\n\nTop pick for this demo: Groundnut\n• Good red-soil compatibility\n• Better beginner confidence\n• Solid market demand`,
-      'compare organic vs chemical farming': `Organic Farming\n• Lower chemical dependency\n• Better sustainability\n• Slower but cleaner growth\n\nChemical Farming\n• Faster visible growth\n• Higher input dependency\n• May increase short-term yield\n\nFor Uzhavan AI, organic-first is the default suggestion.`,
-      'estimate cost for 2 acres': `Estimated cost for 2 acres depends on crop, seed, labor, water, and fertilizer strategy.\n\nDemo estimate:\n• Budget range: ₹35,000 to ₹52,000\n• Recommended crop: Groundnut\n• Expected return: around ₹58,000`,
-      'low water farming options': `Low-water-friendly choices include Millets, Black Gram, Green Gram, and some Groundnut varieties.\n\nFor beginners, Millets are often the safest starting point.`,
-      'which crop gives highest profit?': `In this prototype, Groundnut currently gives the highest estimated return among shortlisted crops.\n\n1. Groundnut — ₹58k\n2. Millets — ₹46k\n3. Black Gram — ₹41k`,
-      'show low risk farming plan': `Low-risk plan:\n• Choose a medium-investment crop\n• Start with 1 to 2 acres\n• Use organic-first input strategy\n• Track water carefully\n• Sell when local prices improve`,
-      'organic farming benefits': `Organic farming benefits:\n• Lower chemical exposure\n• Better long-term soil health\n• Sustainable crop cycle\n• Stronger trust for health-conscious buyers`,
-      'water-saving crop ideas': `Water-saving ideas:\n• Millets\n• Pulses\n• Drip irrigation for Groundnut\n• Mulching to reduce evaporation`,
-    };
-
-    function addMessage(role, text) {
-      const row = document.createElement('div');
-      row.className = `message-row ${role}`;
-
-      if (role === 'bot') {
-        row.innerHTML = `
-          <div class="bubble-avatar bot">AI</div>
-          <div class="bubble bot"></div>
-        `;
-      } else {
-        row.innerHTML = `
-          <div class="bubble user"></div>
-          <div class="bubble-avatar user">U</div>
-        `;
-      }
-
-      row.querySelector('.bubble').textContent = text;
-      messagesEl.appendChild(row);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function getReply(message) {
-      const key = message.trim().toLowerCase();
-      return replies[key] || `This is a prototype reply for: "${message}"\n\nIn the real Uzhavan AI product, the system would analyze soil, season, location, water, budget, and market trend to give a personalized crop recommendation.`;
-    }
-
-    function sendMessage() {
-      const text = inputEl.value.trim();
-      if (!text) return;
-      addMessage('user', text);
-      inputEl.value = '';
-
-      setTimeout(() => {
-        addMessage('bot', getReply(text));
-      }, 350);
-    }
-
-    function sendPreset(text) {
-      addMessage('user', text);
-      setTimeout(() => {
-        addMessage('bot', getReply(text));
-      }, 300);
-    }
-
-    inputEl.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') sendMessage();
+    const REPLIES = Object.freeze({
+      'best crop for red soil':
+        `For red soil, strong options include Groundnut, Millets, and Pulses.\n\nTop pick for this demo: Groundnut\n• Good red-soil compatibility\n• Better beginner confidence\n• Solid market demand`,
+      'compare organic vs chemical farming':
+        `Organic Farming\n• Lower chemical dependency\n• Better sustainability\n• Slower but cleaner growth\n\nChemical Farming\n• Faster visible growth\n• Higher input dependency\n• May increase short-term yield\n\nFor Uzhavan AI, organic-first is the default suggestion.`,
+      'estimate cost for 2 acres':
+        `Estimated cost for 2 acres depends on crop, seed, labor, water, and fertilizer strategy.\n\nDemo estimate:\n• Budget range: ₹35,000 to ₹52,000\n• Recommended crop: Groundnut\n• Expected return: around ₹58,000`,
+      'low water farming options':
+        `Low-water-friendly choices include Millets, Black Gram, Green Gram, and some Groundnut varieties.\n\nFor beginners, Millets are often the safest starting point.`,
+      'which crop gives highest profit?':
+        `In this prototype, Groundnut currently gives the highest estimated return among shortlisted crops.\n\n1. Groundnut — ₹58k\n2. Millets — ₹46k\n3. Black Gram — ₹41k`,
+      'show low risk farming plan':
+        `Low-risk plan:\n• Choose a medium-investment crop\n• Start with 1 to 2 acres\n• Use organic-first input strategy\n• Track water carefully\n• Sell when local prices improve`,
+      'organic farming benefits':
+        `Organic farming benefits:\n• Lower chemical exposure\n• Better long-term soil health\n• Sustainable crop cycle\n• Stronger trust for health-conscious buyers`,
+      'water-saving crop ideas':
+        `Water-saving ideas:\n• Millets\n• Pulses\n• Drip irrigation for Groundnut\n• Mulching to reduce evaporation`,
     });
 
-    function toggleDrawer() {
-      drawerEl.classList.toggle('open');
-    }
+    const FALLBACK_REPLY = (message) =>
+      `This is a prototype reply for: "${message}"\n\nIn the real Uzhavan AI product, the system would analyze soil, season, location, water, budget, and market trend to give a personalized crop recommendation.`;
 
-    function closeDrawer(event) {
-      if (event.target === drawerEl) {
-        drawerEl.classList.remove('open');
-      }
-    }
+    // ─── Pure functions ───────────────────────────────────────────────────────
+
+    // Normalize a user query to a lookup key
+    const normalizeKey = (text) => text.trim().toLowerCase();
+
+    // Look up a reply; returns a string (pure, no side effects)
+    const getReply = (message) =>
+      REPLIES[normalizeKey(message)] ?? FALLBACK_REPLY(message);
+
+    // Build a bot message row element (pure DOM factory)
+    const createBotRow = (text) => {
+      const row = document.createElement('div');
+      row.className = 'message-row bot';
+      row.innerHTML = `<div class="bubble-avatar bot">AI</div><div class="bubble bot"></div>`;
+      row.querySelector('.bubble').textContent = text;
+      return row;
+    };
+
+    // Build a user message row element (pure DOM factory)
+    const createUserRow = (text) => {
+      const row = document.createElement('div');
+      row.className = 'message-row user';
+      row.innerHTML = `<div class="bubble user"></div><div class="bubble-avatar user">U</div>`;
+      row.querySelector('.bubble').textContent = text;
+      return row;
+    };
+
+    // Select the right row factory by role
+    const createMessageRow = (role, text) =>
+      role === 'bot' ? createBotRow(text) : createUserRow(text);
+
+    // ─── Effects ──────────────────────────────────────────────────────────────
+
+    // Append a message row and scroll to the bottom (only side-effect sink)
+    const appendMessage = (container) => (role, text) => {
+      container.appendChild(createMessageRow(role, text));
+      container.scrollTop = container.scrollHeight;
+    };
+
+    // Schedule a bot reply after a delay
+    const scheduleReply = (append, delay) => (userText) =>
+      setTimeout(() => append('bot', getReply(userText)), delay);
+
+    // Clear an input element and return its previous value
+    const consumeInput = (inputEl) => {
+      const text = inputEl.value.trim();
+      inputEl.value = '';
+      return text;
+    };
+
+    // ─── Wire-up ─────────────────────────────────────────────────────────────
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl    = document.getElementById('chatInput');
+    const drawerEl   = document.getElementById('drawer');
+
+    const append    = appendMessage(messagesEl);
+    const replyLater = scheduleReply(append, 350);
+
+    // Public handlers (called from HTML attributes)
+    const sendMessage = () => {
+      const text = consumeInput(inputEl);
+      if (!text) return;
+      append('user', text);
+      replyLater(text);
+    };
+
+    const sendPreset = (text) => {
+      append('user', text);
+      scheduleReply(append, 300)(text);
+    };
+
+    const toggleDrawer = () => drawerEl.classList.toggle('open');
+
+    const closeDrawer = (event) => {
+      if (event.target === drawerEl) drawerEl.classList.remove('open');
+    };
+
+    // Keyboard shortcut: Enter sends the message
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
   </script>
 </body>
 </html>
